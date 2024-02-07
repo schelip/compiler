@@ -1,0 +1,4 @@
+.vscode
+lexical
+*.out
+lex.yy.c
