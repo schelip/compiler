@@ -20,6 +20,7 @@ const_int      {digit}+
 const_float    {digit}*\.{digit}+
 const_char     \'({allchars}|{escapechars})\'
 const_string   \"({allchars}|{escapechars})*\"
+const_bool     true|false
 
 /* operations */
 op_sum         \+
@@ -28,6 +29,9 @@ op_mul         \*
 op_div         \/
 op_mod         %
 op_att         =
+op_not         !
+op_and         &&
+op_or          \|\|
 op_equ         ==
 op_neq         !=
 op_les         <
@@ -71,12 +75,16 @@ comm           \/\/(.)+
 {const_float}     {fprintf(fout, "const_float ");}
 {const_char}      {fprintf(fout, "const_char ");}
 {const_string}    {fprintf(fout, "const_string ");}
+{const_bool}      {fprintf(fout, "const_bool ");}
 {op_sum}          {fprintf(fout, "op_sum ");}
 {op_sub}          {fprintf(fout, "op_sub ");}
 {op_mul}          {fprintf(fout, "op_mul ");}
 {op_div}          {fprintf(fout, "op_div ");}
 {op_mod}          {fprintf(fout, "op_mod ");}
 {op_att}          {fprintf(fout, "op_att ");}
+{op_not}          {fprintf(fout, "op_not ");}
+{op_and}          {fprintf(fout, "op_and ");}
+{op_or}           {fprintf(fout, "op_or ");}
 {op_equ}          {fprintf(fout, "op_equ ");}
 {op_neq}          {fprintf(fout, "op_neq ");}
 {op_les}          {fprintf(fout, "op_les ");}

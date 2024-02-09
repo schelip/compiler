@@ -2,3 +2,4 @@
 lexical
 *.out
 lex.yy.c
+y.*
