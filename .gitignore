@@ -3,3 +3,5 @@ lexical
 *.out
 lex.yy.c
 y.*
+compiler
+lexer

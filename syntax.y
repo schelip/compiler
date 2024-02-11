@@ -1,27 +1,41 @@
 %{
-    #include <stdio.h>
-    int yydebug=1;
+  #include <stdio.h>
+  #include <stdlib.h>
+  int yylex(void);
+  void yyerror(const char *);
+  int yydebug=1;
+  extern FILE* yyin;
+  extern FILE* yyout;
+  extern int yylineno;
+  extern int yy_flex_debug; 
 %}
 
-%token const_int const_float const_char const_string const_bool
-%token op_sum op_sub op_mul op_div op_mod /*op_att*/ op_not op_and op_or /*op_equ op_neq op_les op_leq op_gre op_geq*/
-%token kw_var kw_if kw_else kw_while kw_return kw_function kw_int kw_float kw_char kw_string
-%token id
-%token newline
+%token CONST_INT CONST_FLOAT CONST_CHAR CONST_STRING CONST_BOOL
+%token '+' '-' '*' '/' '%' NOT AND OR
+%token VAR RETURN FUNCTION
+%token INT FLOAT CHAR STRING BOOL
+%token IF ELSE WHILE
+%nonassoc IFX
+%nonassoc ELSE
+%token ID END
 
-%nonassoc op_equ op_neq op_les op_leq op_gre op_geq
-%nonassoc op_att
+%left GE LE '<' '>'
+%left '+' '-'
+%left '*' '/' '%'
+%nonassoc UMINUS
+%nonassoc EQ NE
+%nonassoc '='
 
 %%
 
-program : statement_list newline {
-                                    printf("\nComplete\n");
-                                    exit(1);
-                                 }
+program : statement_list END {
+                                fprintf(yyout, "-> End\n");
+                                exit(1);
+                             }
         ;
 
 statement_list : statement 
-               | statement statement_list 
+               | statement_list statement  
                ;
 
 statement_block : '{' statement_list '}'
@@ -34,162 +48,119 @@ statement : variable_declaration_statement
           | condition_statement 
           | iteration_statement 
           | return_statement 
+          | ';'
           ;
 
-variable_declaration_statement : kw_var id ':' type_specifier ';'
-                     | kw_var id ':' type_specifier op_att expression_statement 
+variable_declaration_statement : VAR ID ':' type_specifier ';' { fprintf(yyout, " -> Variable Declaration Statement"); }
+                               | VAR ID ':' type_specifier '=' expression_statement { fprintf(yyout, " -> Variable Declaration Statement with Assignment"); }
+                               ;
+
+function_declaration : FUNCTION ID '(' parameter_list ')' { fprintf(yyout, " -> Function Declaration"); }
+                     | FUNCTION ID '('')' { fprintf(yyout, " -> Function Declaration without parameters"); }
+                     | FUNCTION ID '(' parameter_list ')' ':' type_specifier { fprintf(yyout, " -> Function Declaration with Return Type"); }
+                     | FUNCTION ID '('')' ':' type_specifier { fprintf(yyout, " -> Function Declaration without Parameters with Return Type"); }
                      ;
 
-function_declaration_statement : kw_function id '(' parameter_list ')' statement_block 
-                     | kw_function id '(' parameter_list ')' ':' type_specifier statement_block 
-                     ;
+function_declaration_statement : function_declaration statement_block
+                               | function_declaration ';'
+                               ;
 
 parameter_list : parameter 
-               | parameter ',' parameter_list 
+               | parameter_list ',' parameter
                ;
 
-parameter : id ':' type_specifier
+parameter : ID ':' type_specifier { fprintf(yyout, " -> Parameter"); }
           ;
 
-attribution_statement : id op_att expression_statement
+attribution_statement : ID '=' expression_statement { fprintf(yyout, " -> Attribution Statement"); }
                       ;
 
-expression_statement : expression ';' 
+expression_statement : expression ';'
                      ;
 
-condition_statement : kw_if '(' expression ')' statement_block
-                    | kw_if '(' expression ')' statement_block kw_else statement_block 
+condition_statement : IF '(' expression ')' statement_block { fprintf(yyout, " -> If Statement"); } %prec IFX
+                    | IF '(' expression ')' statement_block ELSE statement_block { fprintf(yyout, " -> If Else Statement"); }
                     ;
 
-iteration_statement : kw_while '(' expression ')' statement_block 
+iteration_statement : WHILE '(' expression ')' statement_block { fprintf(yyout, " -> While Statement"); }
                     ;
 
-return_statement : kw_return expression_statement
+return_statement : RETURN expression_statement { fprintf(yyout, " -> Return Statement"); }
                  ;
 
-type_specifier : kw_int 
-               | kw_float 
-               | kw_char 
-               | kw_string 
+type_specifier : INT { fprintf(yyout, " -> Integer Type"); }
+               | FLOAT { fprintf(yyout, " -> Float Type"); }
+               | CHAR { fprintf(yyout, " -> Char Type"); }
+               | STRING { fprintf(yyout, " -> String Type"); }
+               | BOOL { fprintf(yyout, " -> Bool Type"); }
                ;
 
 expression : term
-           | term term_operator expression
+           | expression term_operator term
            ;
 
-term_operator : op_or
-              | op_sum
-              | op_sub
+term_operator : OR
+              | '+' { fprintf(yyout, " -> Addition Operator"); }
+              | '-' { fprintf(yyout, " -> Subtraction Operator"); }
               ;
 
 term : factor
-     | factor factor_operator term
+     | term factor_operator factor
      ;
 
-factor_operator : op_and
-                | op_equ
-                | op_neq
-                | op_les
-                | op_leq
-                | op_gre
-                | op_geq
-                | op_mul
-                | op_div
-                | op_mod
+factor_operator : AND
+                | EQ
+                | NE
+                | '<'
+                | LE
+                | '>'
+                | GE
+                | '*'
+                | '/'
+                | '%'
                 ;
 
 factor : value
        | unary_operator value
        ;
 
-unary_operator : op_sub
-               | op_not
+unary_operator : '-' %prec UMINUS
+               | NOT
                ;
 
-value : '(' expression ')'
-      | const
-      | id
-      | function_call
+value : '(' expression ')' { fprintf(yyout, " -> Expression in Parentheses"); }
+      | const { fprintf(yyout, " -> Constant"); }
+      | ID { fprintf(yyout, " -> Identifier"); }
+      | function_call { fprintf(yyout, " -> Function Call"); }
       ;
 
-const : const_int
-      | const_float
-      | const_char
-      | const_string
-      | const_bool
+const : CONST_INT
+      | CONST_FLOAT
+      | CONST_CHAR
+      | CONST_STRING
+      | CONST_BOOL
       ;
 
-/* expression : boolean_expression
-           | arithmetic_expression 
-           | id
-           | function_call
-           | const_char
-           | const_string
-           ;
-
-boolean_expression : boolean_term
-                   | boolean_term op_or boolean_expression
-                   ;
-
-boolean_term : boolean_factor
-             | boolean_factor op_and boolean_term
-             ;
-
-boolean_factor : '(' boolean_expression ')'
-               | op_not boolean_factor
-               | arithmetic_expression relative_operator arithmetic_expression
-               | id
-               | function_call
-               | const_bool
-               ;
-
-relative_operator : op_equ
-                  | op_neq
-                  | op_les
-                  | op_leq
-                  | op_gre
-                  | op_geq
-                  ;
-
-arithmetic_expression : arithmetic_term
-                      | arithmetic_term op_sum arithmetic_expression
-                      | arithmetic_term op_sub arithmetic_expression
-                      ;
-
-arithmetic_term : arithmetic_factor
-                | arithmetic_factor op_mul arithmetic_term
-                | arithmetic_factor op_div arithmetic_term
-                | arithmetic_factor op_mod arithmetic_term
-                ;
-
-arithmetic_factor : '(' arithmetic_expression ')'
-                  | id
-                  | function_call
-                  | numeric_const
-                  ;
-
-numeric_const : const_int
-              | const_float
-              ; */
-
-function_call : id'(' argument_list ')'
+function_call : ID'('')' { fprintf(yyout, " -> Function Call without Arguments"); }
+              | ID'(' argument_list ')' { fprintf(yyout, " -> Function Call with Arguments"); }
               ;
 
-argument_list : expression
-              | expression ',' argument_list
+argument_list : expression { fprintf(yyout, " -> Argument"); }
+              | argument_list ',' expression { fprintf(yyout, " -> Argument List"); }
               ;
 
 %%
 
-void yyerror(char const *s)
+void yyerror(const char *s)
 {
-    printf("yyerror  %s\n",s);
-    return ;
+  fprintf(stderr, "Syntax error:  %s at line %d\n", s, yylineno);
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  yyin=fopen("test.src","r");
+  yyout=fopen("test.src.out","w");
   yyparse();
-  return 1;
+  fclose(yyin);
+  return EXIT_SUCCESS;
 }
-    

@@ -1,136 +1,159 @@
-%option noyywrap
-
 %{
-   #include <stdio.h>
-   #include <stdlib.h>
-   #include <string.h>
-
-   FILE *fout;
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include "y.tab.h"
+  void yyerror(char *);
+  int yylineno;
 %}
 
+%option yylineno
+%option nodefault
+
 /* util regular expressions */
-letter      [a-zA-Z]
-digit       [0-9]
-alphanum    {letter}|{digit}
-allchars    [ -~]
-escapechars \\[bfnrtv]
+letter          [a-zA-Z]
+digit           [0-9]
+alphanum        {letter}|{digit}
+allchars        [ -~]
+escapechars     \\[bfnrtv]
 
 /* constants */
-const_int      {digit}+
-const_float    {digit}*\.{digit}+
-const_char     \'({allchars}|{escapechars})\'
-const_string   \"({allchars}|{escapechars})*\"
-const_bool     true|false
+const_int       {digit}+
+const_float     {digit}*\.{digit}+
+const_char      \'({allchars}|{escapechars})\'
+const_string    \"({allchars}|{escapechars})*\"
+const_bool      true|false
 
-/* operations */
-op_sum         \+
-op_sub         -
-op_mul         \*
-op_div         \/
-op_mod         %
-op_att         =
-op_not         !
-op_and         &&
-op_or          \|\|
-op_equ         ==
-op_neq         !=
-op_les         <
-op_leq         <=
-op_gre         >
-op_geq         >=
+id              ({letter}|_)({alphanum}|_)*
 
-/* keywords */
-kw_var         var
-kw_if          if
-kw_else        else
-kw_while       while
-kw_return      return
-kw_function    function
-kw_int         int
-kw_float       float
-kw_char        char
-kw_string      string
+comm            \/\*(.)+\*\/
 
-/* delimiters */
-d_oppar        \(
-d_clpar        \)
-d_opsqbr       \[
-d_clsqbr       \]
-d_opbrack      \{
-d_clbrack      \}
-d_comma        ,
-d_colon        :
-d_semicolon    ;
-d_ws           [ \n\t\r]+
-
-/* identifier */
-id             ({letter}|_)({alphanum}|_)*
-
-/* comment */
-comm           \/\/(.)+
+symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
 
 %%
 
-{const_int}       {fprintf(fout, "const_int ");}
-{const_float}     {fprintf(fout, "const_float ");}
-{const_char}      {fprintf(fout, "const_char ");}
-{const_string}    {fprintf(fout, "const_string ");}
-{const_bool}      {fprintf(fout, "const_bool ");}
-{op_sum}          {fprintf(fout, "op_sum ");}
-{op_sub}          {fprintf(fout, "op_sub ");}
-{op_mul}          {fprintf(fout, "op_mul ");}
-{op_div}          {fprintf(fout, "op_div ");}
-{op_mod}          {fprintf(fout, "op_mod ");}
-{op_att}          {fprintf(fout, "op_att ");}
-{op_not}          {fprintf(fout, "op_not ");}
-{op_and}          {fprintf(fout, "op_and ");}
-{op_or}           {fprintf(fout, "op_or ");}
-{op_equ}          {fprintf(fout, "op_equ ");}
-{op_neq}          {fprintf(fout, "op_neq ");}
-{op_les}          {fprintf(fout, "op_les ");}
-{op_leq}          {fprintf(fout, "op_leq ");}
-{op_gre}          {fprintf(fout, "op_gre ");}
-{op_geq}          {fprintf(fout, "op_geq ");}
-{kw_var}          {fprintf(fout, "kw_var ");}
-{kw_if}           {fprintf(fout, "kw_if ");}
-{kw_else}         {fprintf(fout, "kw_else ");}
-{kw_while}        {fprintf(fout, "kw_while ");}
-{kw_return}       {fprintf(fout, "kw_return ");}
-{kw_function}     {fprintf(fout, "kw_function ");}
-{kw_int}          {fprintf(fout, "kw_int ");}
-{kw_float}        {fprintf(fout, "kw_float ");}
-{kw_char}         {fprintf(fout, "kw_char ");}
-{kw_string}       {fprintf(fout, "kw_string ");}
-{d_oppar}         {fprintf(fout, "d_oppar ");}
-{d_clpar}         {fprintf(fout, "d_clpar ");}
-{d_opsqbr}        {fprintf(fout, "d_opsqbr ");}
-{d_clsqbr}        {fprintf(fout, "d_clsqbr ");}
-{d_opbrack}       {fprintf(fout, "d_opbrack ");}
-{d_clbrack}       {fprintf(fout, "d_clbrack ");}
-{d_comma}         {fprintf(fout, "d_comma ");}
-{d_colon}         {fprintf(fout, "d_colon ");}
-{d_semicolon}     {fprintf(fout, "d_semicolon ");}
-{d_ws}            {fprintf(fout, "%s", yytext);}
-{id}              {fprintf(fout, "id ");}
-{comm}            {fprintf(fout, "comm ");}
+{const_int}     {
+                  yylval = atoi(yytext);
+                  fprintf(yyout, "CONST_INT");
+                  return CONST_INT;
+                }
+{const_float}   {
+                  yylval = atof(yytext);
+                  fprintf(yyout, "CONST_FLOAT");
+                  return CONST_FLOAT;
+                }
+{const_char}    {
+                  fprintf(yyout, "CONST_INT");
+                  return CONST_CHAR;
+                }
+{const_string}  {
+                  fprintf(yyout, "CONST_STRING");
+                  return CONST_STRING;
+                }
+{const_bool}    {
+                  fprintf(yyout, "CONST_BOOL");
+                  return CONST_BOOL;
+                }
+"!!"            {
+                  fprintf(yyout, "AND");
+                  return AND;
+                }
+"||"            {
+                  fprintf(yyout, "OR");
+                  return OR;
+                }
+"=="            {
+                  fprintf(yyout, "EQ");
+                  return EQ;
+                }
+"!="            {
+                  fprintf(yyout, "NE");
+                  return NE;
+                }
+"<="            {
+                  fprintf(yyout, "LE");
+                  return LE;
+                }
+">="            {
+                  fprintf(yyout, "GE");
+                  return GE;
+                }
+"var"           {
+                  fprintf(yyout, "VAR");
+                  return VAR;
+                }
+"if"            {
+                  fprintf(yyout, "IF");
+                  return IF;
+                }
+"else"          {
+                  fprintf(yyout, "ELSE");
+                  return ELSE;
+                }
+"while"         {
+                  fprintf(yyout, "WHILE");
+                  return WHILE;
+                }
+"return"        {
+                  fprintf(yyout, "RETURN");
+                  return RETURN;
+                }
+"function"      {
+                  fprintf(yyout, "FUNCTION");
+                  return FUNCTION;
+                }
+"int"           {
+                  fprintf(yyout, "INT");
+                  return INT;
+                }
+"float"         {
+                  fprintf(yyout, "FLOAT");
+                  return FLOAT;
+                }
+"char"          {
+                  fprintf(yyout, "CHAR");
+                  return CHAR;
+                }
+"string"        {
+                  fprintf(yyout, "STRING");
+                  return STRING;
+                }
+{id}            {
+                  fprintf(yyout, "ID");
+                  return ID;
+                }
+{comm}          {
+                  fprintf(yyout, "comment");
+                }
+{symbols}       {
+                  ECHO;
+                  return *yytext;
+                }
+[\n|\r|\r\n]    {
+                  ECHO;
+                  yylineno++;
+                }
+[ \t]           {
+                  ECHO;
+                }
+<<EOF>>         {
+                  return END;
+                  yyterminate();
+                }
+.               {
+                  fprintf(yyout, "Error: unrecognized character at line %d", yylineno);
+                }
 
 %%
 
-int main(int argc, char* argv[])
+int yywrap()
 {
-	if(argc > 1)
-	{
-		FILE *fin = fopen(argv[1], "r");
-		if (fin)
-			yyin = fin;
-
-      char sOutFileName[100];
-      strcat(sOutFileName, argv[1]);
-      strcat(sOutFileName, ".out");
-      fout = fopen(sOutFileName, "w");
-		if (!fout)
-			return EXIT_FAILURE;
-	}
-	yylex();
-	return EXIT_SUCCESS;
+  return 1;
 }
+
+/* int main(int argc, char* argv[]) {
+  yyin=fopen("test.src","r");
+  yyout=fopen("test.src.out", "w");
+  yylex();
+  return EXIT_SUCCESS;
+} */
