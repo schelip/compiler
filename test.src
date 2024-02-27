@@ -1,7 +1,13 @@
-/* Function to calculate the factorial of an integer */
-function calculateFactorial(num: int): int {
-    var result: int = 1;
-    var i: int = 1;
+/* Global variable declarations */
+var numInt: int;
+var numFloat: float;
+var character: char;
+var str: string;
+
+/* Function declarations */
+function calculateFactorial (num: int): int /* Header */
+var result, i: int; /* Function variable declarations */
+{
     while (i <= num) {
         result = result * i;
         i = i + 1;
@@ -9,38 +15,53 @@ function calculateFactorial(num: int): int {
     return result;
 }
 
-function main(): int {
-    var numInt: int = 5;
-    var numFloat: float = 3.14;
-    var character: char = 'A';
-    var str: string = "Example";
+function mdc (a, b: int): int
+{
+    if (b == 0) {
+        return a;
+    } else {
+        return mdc (b, a % b);
+    }
+}
+
+function main ()
+var resultSum, resultFactorial, userEntry: int;
+var resultDivision: float;
+{
+    numInt = 5;
+    numFloat = 3.14;
+    character = 'A';
+    str = "Example";
 
     /* Print data types */
-    print("int: %d\n", numInt);
-    print("Float: %.2f\n", numFloat);
-    print("Character: %c\n", character);
-    print("String: %s\n", str);
+    print ("int: %d\n", numInt);
+    print ("Float: %.2f\n", numFloat);
+    print ("Character: %c\n", character);
+    print ("String: %s\n", str);
 
     /* Perform mathematical operations */
-    var resultSum: int = numInt + 10;
-    var resultDivision: float = numFloat / 2.0;
-    var resultFactorial: int = calculateFactorial(numInt);
+    resultSum = numInt + 10;
+    resultDivision = numFloat / 2.0;
+    resultFactorial = calculateFactorial(numInt);
 
-    print("Sum: %d\n", resultSum);
-    print("Division: %.2f\n", resultDivision);
-    print("Factorial of %d: %d\n", numInt, resultFactorial);
+    print ("Sum: %d\n", resultSum);
+    print ("Division: %.2f\n", resultDivision);
+    print ("Factorial of %d: %d\n", numInt, resultFactorial);
 
-    /* Check if a number is even or odd */
+    /* Check if a number is even */
     if (numInt % 2 == 0) {
-        print("%d is even.\n", numInt);
-    } else {
-        print("%d is odd.\n", numInt);
+        print ("%d is even.\n", numInt);
     }
 
     /* User input */
-    print("Enter an integer: ");
-    var userEntry: int = scan("%d");
-    print("You entered: %d\n", userEntry);
+    print ("Enter an integer: ");
+    userEntry = scan ("%d");
+    print ("You entered: %d\n", userEntry);
 
     return 0;
+}
+
+/* MAIN BLOCK (REQUIRED) */
+{
+    main ();
 }

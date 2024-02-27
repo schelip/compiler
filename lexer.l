@@ -4,7 +4,6 @@
   #include <string.h>
   #include "y.tab.h"
   void yyerror(char *);
-  int yylineno;
 %}
 
 %option yylineno
@@ -16,43 +15,46 @@ digit           [0-9]
 alphanum        {letter}|{digit}
 allchars        [ -~]
 escapechars     \\[bfnrtv]
+linebreak       [\n|\r|\r\n]
 
-/* constants */
-const_int       {digit}+
-const_float     {digit}*\.{digit}+
-const_char      \'({allchars}|{escapechars})\'
-const_string    \"({allchars}|{escapechars})*\"
-const_bool      true|false
+/* literals */
+literal_int       {digit}+
+literal_float     {digit}*\.{digit}+
+literal_char      \'({allchars}|{escapechars})\'
+literal_str       \"({allchars}|{escapechars})*\"
+literal_bool      true|false
 
 id              ({letter}|_)({alphanum}|_)*
 
-comm            \/\*(.)+\*\/
+comm            \/\*([^*]|\*[^\/])*\*\/
 
 symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
 
 %%
 
-{const_int}     {
-                  yylval = atoi(yytext);
-                  fprintf(yyout, "CONST_INT");
-                  return CONST_INT;
+{literal_int}   {
+                  fprintf(yyout, "LITERAL_INT");
+                  yylval.i_value = atoi(yytext);
+                  return LITERAL_INT;
                 }
-{const_float}   {
-                  yylval = atof(yytext);
-                  fprintf(yyout, "CONST_FLOAT");
-                  return CONST_FLOAT;
+{literal_float} {
+                  fprintf(yyout, "LITERAL_FLOAT");
+                  yylval.f_value = atof(yytext);
+                  return LITERAL_FLOAT;
                 }
-{const_char}    {
-                  fprintf(yyout, "CONST_INT");
-                  return CONST_CHAR;
+{literal_char}  {
+                  fprintf(yyout, "LITERAL_CHAR");
+                  yylval.c_value = yytext[1];
+                  return LITERAL_CHAR;
                 }
-{const_string}  {
-                  fprintf(yyout, "CONST_STRING");
-                  return CONST_STRING;
+{literal_str}   {
+                  fprintf(yyout, "LITERAL_STRING");
+                  strncpy(yylval.s_value, yytext + 1, strlen(yytext) - 2);
+                  return LITERAL_STRING;
                 }
-{const_bool}    {
-                  fprintf(yyout, "CONST_BOOL");
-                  return CONST_BOOL;
+{literal_bool}  {
+                  fprintf(yyout, "LITERAL_BOOL");
+                  return LITERAL_BOOL;
                 }
 "!!"            {
                   fprintf(yyout, "AND");
@@ -102,6 +104,14 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
                   fprintf(yyout, "FUNCTION");
                   return FUNCTION;
                 }
+"array"         {
+                  fprintf(yyout, "ARRAY");
+                  return ARRAY;
+                }
+"of"            {
+                  fprintf(yyout, "OF");
+                  return OF;
+                }
 "int"           {
                   fprintf(yyout, "INT");
                   return INT;
@@ -122,26 +132,23 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
                   fprintf(yyout, "ID");
                   return ID;
                 }
-{comm}          {
-                  fprintf(yyout, "comment");
-                }
+{comm}          ;
 {symbols}       {
                   ECHO;
                   return *yytext;
                 }
-[\n|\r|\r\n]    {
+{linebreak}     {
                   ECHO;
-                  yylineno++;
                 }
 [ \t]           {
                   ECHO;
                 }
 <<EOF>>         {
                   return END;
-                  yyterminate();
                 }
 .               {
-                  fprintf(yyout, "Error: unrecognized character at line %d", yylineno);
+                  fprintf(stderr, "Error: unexpected character \'%s\' at line %d\n", yytext, yylineno);
+                  exit(EXIT_FAILURE);
                 }
 
 %%
