@@ -2,8 +2,10 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <string.h>
-  #include "y.tab.h"
+  #include "ast.h"
+  #include "parser.tab.h"
   void yyerror(char *);
+  char *copytext(char *text);
 %}
 
 %option yylineno
@@ -49,7 +51,7 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
                 }
 {literal_str}   {
                   fprintf(yyout, "LITERAL_STRING");
-                  strncpy(yylval.s_value, yytext + 1, strlen(yytext) - 2);
+                  yylval.s_value = copytext(yytext);
                   return LITERAL_STRING;
                 }
 {literal_bool}  {
@@ -130,6 +132,7 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
                 }
 {id}            {
                   fprintf(yyout, "ID");
+                  yylval.s_value = copytext(yytext);
                   return ID;
                 }
 {comm}          ;
@@ -143,9 +146,6 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
 [ \t]           {
                   ECHO;
                 }
-<<EOF>>         {
-                  return END;
-                }
 .               {
                   fprintf(stderr, "Error: unexpected character \'%s\' at line %d\n", yytext, yylineno);
                   exit(EXIT_FAILURE);
@@ -158,9 +158,10 @@ int yywrap()
   return 1;
 }
 
-/* int main(int argc, char* argv[]) {
-  yyin=fopen("test.src","r");
-  yyout=fopen("test.src.out", "w");
-  yylex();
-  return EXIT_SUCCESS;
-} */
+char *copytext(char *text) {
+  size_t len = strlen(text);             
+  char *val = malloc(sizeof(char *) * len + 1);
+  val = strncpy(val, yytext, len);
+  val[len] = '\0';
+  return val;
+}

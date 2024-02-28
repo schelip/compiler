@@ -3,12 +3,14 @@ var numInt: int;
 var numFloat: float;
 var character: char;
 var str: string;
+var arr: array [5] of int;
 
 /* Function declarations */
 function calculateFactorial (num: int): int /* Header */
-var result, i: int; /* Function variable declarations */
-{
-    while (i <= num) {
+{ 
+    var result, i: int; /* Function scope variable declarations */
+    while (i <= num)
+    {
         result = result * i;
         i = i + 1;
     }
@@ -17,17 +19,24 @@ var result, i: int; /* Function variable declarations */
 
 function mdc (a, b: int): int
 {
-    if (b == 0) {
+    if (b == 0)
+    {
         return a;
-    } else {
-        return mdc (b, a % b);
     }
+    else if (b != 0)
+    {
+        var result : int; /* Block scope variable declarations */
+        result = mdc (b, a % b);
+        return result;
+    }
+    else
+        return 1;
 }
 
-function main ()
-var resultSum, resultFactorial, userEntry: int;
-var resultDivision: float;
+/* MAIN BLOCK (REQUIRED) */
 {
+    var resultSum, resultFactorial, userEntry: int;
+    var resultDivision: float;
     numInt = 5;
     numFloat = 3.14;
     character = 'A';
@@ -58,10 +67,20 @@ var resultDivision: float;
     userEntry = scan ("%d");
     print ("You entered: %d\n", userEntry);
 
-    return 0;
-}
-
-/* MAIN BLOCK (REQUIRED) */
-{
-    main ();
+    {
+        var i: int;
+        i = 0;
+        while (i < 5)
+        {
+            arr[i] = (i * 2) + 1;
+            i = i + 1;
+        }
+        while (i > 0)
+        {
+            print ("[");
+            print ("%d ", arr[i]);
+            i = i - 1;
+            print ("]");
+        }
+    }
 }

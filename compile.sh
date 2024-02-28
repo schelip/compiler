@@ -1,4 +1,4 @@
-yacc -d --verbose parser.y
-lex lexer.l
-gcc lex.yy.c y.tab.c symbol.c -o compiler
+bison -d --verbose parser.y
+flex lexer.l
+gcc lex.yy.c parser.tab.c ast.c -o compiler
 ./compiler < test.src

@@ -3,5 +3,8 @@ lexical
 *.out
 lex.yy.c
 y.*
+parser.output
+parser.tab.c
+parser.tab.h
 compiler
 lexer
