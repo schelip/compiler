@@ -1,4 +1,4 @@
 bison -d --verbose parser.y
-flex lexer.l
-gcc lex.yy.c parser.tab.c ast.c -o compiler
+lex -l lexer.l
+gcc -Wall -g main.c lex.yy.c parser.tab.c syntax.c table.c semanthic.c -o compiler
 ./compiler < test.src

@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ast.h"
+#include "syntax.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Node creating functions //////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
-NodeProgram create_ast_node_program(NodeVarDeclList var_decl_list, NodeFuncDeclList func_decl_list, NodeStmtBlock main_stmt_block) {
+NodeProgram create_program(NodeVarDeclList var_decl_list, NodeFuncDeclList func_decl_list, NodeStmtBlock main_stmt_block, int lineno) {
   if (main_stmt_block == NULL) {
     fprintf(stderr, "Error: no main statement block found\n");
     exit(EXIT_FAILURE);
@@ -21,10 +21,11 @@ NodeProgram create_ast_node_program(NodeVarDeclList var_decl_list, NodeFuncDeclL
   node->var_decl_list = var_decl_list;
   node->func_decl_list = func_decl_list;
   node->main_stmt_block = main_stmt_block;
+  node->lineno = lineno;
   return node;
 }
 
-NodeVarDeclList create_ast_node_var_decl_list(NodeVarDecl var_decl, NodeVarDeclList tail) {
+NodeVarDeclList create_var_decl_list(NodeVarDecl var_decl, NodeVarDeclList tail, int lineno) {
   NodeVarDeclList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -32,10 +33,11 @@ NodeVarDeclList create_ast_node_var_decl_list(NodeVarDecl var_decl, NodeVarDeclL
   }
   node->var_decl = var_decl;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeVarDecl create_ast_node_var_decl(NodeVarIdList var_id_list, NodeTypeSpecifier type_specifier) {
+NodeVarDecl create_var_decl(NodeVarIdList var_id_list, NodeType type_specifier, int lineno) {
   NodeVarDecl node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -43,10 +45,11 @@ NodeVarDecl create_ast_node_var_decl(NodeVarIdList var_id_list, NodeTypeSpecifie
   }
   node->var_id_list = var_id_list;
   node->type_specifier = type_specifier;
+  node->lineno = lineno;
   return node;
 }
 
-NodeVarIdList create_ast_node_var_id_list(char *var_id, NodeVarIdList tail) {
+NodeVarIdList create_var_id_list(NodeVarId var_id, NodeVarIdList tail, int lineno) {
   NodeVarIdList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -54,22 +57,48 @@ NodeVarIdList create_ast_node_var_id_list(char *var_id, NodeVarIdList tail) {
   }
   node->var_id = var_id;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeTypeSpecifier create_ast_node_primitive_type_specifier(DataType data_type) {
-  NodeTypeSpecifier node = malloc(sizeof(*node));
+NodeVarId create_var_id(char *var_id, int lineno) {
+  NodeVarId node = malloc(sizeof(*node));
+  if (node == NULL) {
+    fprintf(stderr, "Error: out of memory\n");
+    exit(EXIT_FAILURE);
+  }
+  node->var_id = var_id;
+  node->lineno = lineno;
+  return node;
+}
+
+NodeVar create_var(NodeVarId var_id, NodeType var_type, NodeLiteral value, int lineno) {
+  NodeVar node = malloc(sizeof(*node));
+  if (node == NULL) {
+    fprintf(stderr, "Error: out of memory\n");
+    exit(EXIT_FAILURE);
+  }
+  node->var_id = var_id;
+  node->var_type = var_type;
+  node->var_value = value;
+  node->lineno = lineno;
+  return node;
+}
+
+NodeType create_primitive_type_specifier(DataType data_type, int lineno) {
+  NodeType node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
     exit(EXIT_FAILURE);
   }
   node->kind = kind_primitive;
   node->primitive_type = data_type;
+  node->lineno = lineno;
   return node;
 }
 
-NodeTypeSpecifier create_ast_node_array_type_specifier(DataType data_type, int size) {
-  NodeTypeSpecifier node = malloc(sizeof(*node));
+NodeType create_array_type_specifier(DataType data_type, int size, int lineno) {
+  NodeType node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
     exit(EXIT_FAILURE);
@@ -77,10 +106,11 @@ NodeTypeSpecifier create_ast_node_array_type_specifier(DataType data_type, int s
   node->kind = kind_array;
   node->array_type.data_type = data_type;
   node->array_type.size = size;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFuncDeclList create_ast_node_func_decl_list(NodeFuncDecl func_decl, NodeFuncDeclList tail) {
+NodeFuncDeclList create_func_decl_list(NodeFuncDecl func_decl, NodeFuncDeclList tail, int lineno) {
   NodeFuncDeclList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -88,10 +118,11 @@ NodeFuncDeclList create_ast_node_func_decl_list(NodeFuncDecl func_decl, NodeFunc
   }
   node->func_decl = func_decl;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFuncDecl create_ast_node_func_decl(NodeFuncHeader func_header, NodeStmtBlock func_stmt_block) {
+NodeFuncDecl create_func_decl(NodeFuncHeader func_header, NodeStmtBlock func_stmt_block, int lineno) {
   NodeFuncDecl node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -99,10 +130,11 @@ NodeFuncDecl create_ast_node_func_decl(NodeFuncHeader func_header, NodeStmtBlock
   }
   node->func_header = func_header;
   node->func_stmt_block = func_stmt_block;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFuncHeader create_ast_node_func_header(char *func_identifier, NodeFuncParamList func_param_list, NodeTypeSpecifier func_return_type) {
+NodeFuncHeader create_func_header(char *func_identifier, NodeFuncParamList func_param_list, NodeType func_return_type, int lineno) {
   NodeFuncHeader node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -111,10 +143,11 @@ NodeFuncHeader create_ast_node_func_header(char *func_identifier, NodeFuncParamL
   node->func_identifier = func_identifier;
   node->func_param_list = func_param_list;
   node->func_return_type = func_return_type;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFuncParamList create_ast_node_func_param_list(NodeFuncParam param, NodeFuncParamList tail) {
+NodeFuncParamList create_func_param_list(NodeFuncParam param, NodeFuncParamList tail, int lineno) {
   NodeFuncParamList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -122,10 +155,11 @@ NodeFuncParamList create_ast_node_func_param_list(NodeFuncParam param, NodeFuncP
   }
   node->param = param;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFuncParam create_ast_node_func_param(NodeVarIdList param_id_list, NodeTypeSpecifier param_type) {
+NodeFuncParam create_func_param(NodeVarIdList param_id_list, NodeType param_type, int lineno) {
   NodeFuncParam node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -133,10 +167,11 @@ NodeFuncParam create_ast_node_func_param(NodeVarIdList param_id_list, NodeTypeSp
   }
   node->param_id_list = param_id_list;
   node->param_type = param_type;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmtBlock create_ast_node_stmt_block(NodeVarDeclList block_var_decl_list, NodeStmtList stmt_list) {
+NodeStmtBlock create_stmt_block(NodeVarDeclList block_var_decl_list, NodeStmtList stmt_list, int lineno) {
   NodeStmtBlock node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -144,10 +179,11 @@ NodeStmtBlock create_ast_node_stmt_block(NodeVarDeclList block_var_decl_list, No
   }
   node->block_var_decl_list = block_var_decl_list;
   node->stmt_list = stmt_list;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmtList create_ast_node_stmt_list(NodeStmt stmt, NodeStmtList tail) {
+NodeStmtList create_stmt_list(NodeStmt stmt, NodeStmtList tail, int lineno) {
   NodeStmtList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -155,10 +191,11 @@ NodeStmtList create_ast_node_stmt_list(NodeStmt stmt, NodeStmtList tail) {
   }
   node->stmt = stmt;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_attribution_stmt(NodeVarAccess var_access, NodeExpression right) {
+NodeStmt create_attribution_stmt(NodeVarAccess var_access, NodeExpression right, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -167,10 +204,11 @@ NodeStmt create_ast_node_attribution_stmt(NodeVarAccess var_access, NodeExpressi
   node->kind = kind_attribution_stmt;
   node->attribution_stmt.var_access = var_access;
   node->attribution_stmt.right = right;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_func_call_stmt(NodeFuncCall call) {
+NodeStmt create_func_call_stmt(NodeFuncCall call, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -178,10 +216,11 @@ NodeStmt create_ast_node_func_call_stmt(NodeFuncCall call) {
   }
   node->kind = kind_func_call_stmt;
   node->func_call_stmt.call = call;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_ifx_stmt(NodeExpression cond, NodeStmt body) {
+NodeStmt create_ifx_stmt(NodeExpression cond, NodeStmt body, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -190,10 +229,11 @@ NodeStmt create_ast_node_ifx_stmt(NodeExpression cond, NodeStmt body) {
   node->kind = kind_comparison_ifx_stmt;
   node->comparison_ifx_stmt.cond = cond;
   node->comparison_ifx_stmt.body = body;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_ifelse_stmt(NodeExpression cond, NodeStmt if_body, NodeStmt else_body) {
+NodeStmt create_ifelse_stmt(NodeExpression cond, NodeStmt if_body, NodeStmt else_body, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -203,10 +243,11 @@ NodeStmt create_ast_node_ifelse_stmt(NodeExpression cond, NodeStmt if_body, Node
   node->comparison_ifelse_stmt.cond = cond;
   node->comparison_ifelse_stmt.if_body = if_body;
   node->comparison_ifelse_stmt.else_body = else_body;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_iteration_stmt(NodeExpression cond, NodeStmt body) {
+NodeStmt create_iteration_stmt(NodeExpression cond, NodeStmt body, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -215,10 +256,11 @@ NodeStmt create_ast_node_iteration_stmt(NodeExpression cond, NodeStmt body) {
   node->kind = kind_iteration_stmt;
   node->iteration_stmt.cond = cond;
   node->iteration_stmt.body = body;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_return_stmt(NodeExpression expr) {
+NodeStmt create_return_stmt(NodeExpression expr, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -226,10 +268,11 @@ NodeStmt create_ast_node_return_stmt(NodeExpression expr) {
   }
   node->kind = kind_ret_stmt;
   node->return_expr = expr;
+  node->lineno = lineno;
   return node;
 }
 
-NodeStmt create_ast_node_block_stmt(NodeStmtBlock block) {
+NodeStmt create_block_stmt(NodeStmtBlock block, int lineno) {
   NodeStmt node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -237,10 +280,11 @@ NodeStmt create_ast_node_block_stmt(NodeStmtBlock block) {
   }
   node->kind = kind_block_stmt;
   node->block = block;
+  node->lineno = lineno;
   return node;
 }
 
-NodeVarAccess create_ast_node_simple_var_access(char *var_id) {
+NodeVarAccess create_simple_var_access(char *var_id, int lineno) {
   NodeVarAccess node = malloc(sizeof(*node));
 
   if (node == NULL) {
@@ -249,9 +293,11 @@ NodeVarAccess create_ast_node_simple_var_access(char *var_id) {
   }
   node->kind = kind_simple_var_access;
   node->var_id = var_id;
+  node->lineno = lineno;
+  return node;
 }
 
-NodeVarAccess create_ast_node_array_access(char *arr_id, NodeExpression idx) {
+NodeVarAccess create_array_access(char *arr_id, NodeExpression idx, int lineno) {
   NodeVarAccess node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -260,9 +306,11 @@ NodeVarAccess create_ast_node_array_access(char *arr_id, NodeExpression idx) {
   node->kind = kind_array_access;
   node->array_access.arr_id = arr_id;
   node->array_access.idx = idx;
+  node->lineno = lineno;
+  return node;
 }
 
-NodeFuncCall create_ast_node_func_call(char *func_id, NodeArgList arg_list) {
+NodeFuncCall create_func_call(char *func_id, NodeArgList arg_list, int lineno) {
   NodeFuncCall node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -270,10 +318,11 @@ NodeFuncCall create_ast_node_func_call(char *func_id, NodeArgList arg_list) {
   }
   node->func_id = func_id;
   node->arg_list = arg_list;
+  node->lineno = lineno;
   return node;
 }
 
-NodeArgList create_ast_node_arg_list(NodeExpression arg, NodeArgList tail) {
+NodeArgList create_arg_list(NodeExpression arg, NodeArgList tail, int lineno) {
   NodeArgList node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -281,10 +330,11 @@ NodeArgList create_ast_node_arg_list(NodeExpression arg, NodeArgList tail) {
   }
   node->arg = arg;
   node->tail = tail;
+  node->lineno = lineno;
   return node;
 }
 
-NodeExpression create_ast_node_simple_expr_expression(NodeSimpleExpression simple_expr) {
+NodeExpression create_simple_expr_expression(NodeSimpleExpression simple_expr, int lineno) {
   NodeExpression node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -292,10 +342,11 @@ NodeExpression create_ast_node_simple_expr_expression(NodeSimpleExpression simpl
   }
   node->kind = kind_simple_expr;
   node->simple_expr = simple_expr;
+  node->lineno = lineno;
   return node;
 }
 
-NodeExpression create_ast_node_relational_expr_expression(NodeSimpleExpression left, RelationalOperator op, NodeSimpleExpression right) {
+NodeExpression create_relational_expr_expression(NodeSimpleExpression left, RelationalOperator op, NodeSimpleExpression right, int lineno) {
   NodeExpression node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -305,10 +356,11 @@ NodeExpression create_ast_node_relational_expr_expression(NodeSimpleExpression l
   node->relational_expr.left = left;
   node->relational_expr.op = op;
   node->relational_expr.right = right;
+  node->lineno = lineno;
   return node;
 }
 
-NodeSimpleExpression create_ast_node_term_simple_expr(NodeTerm term) {
+NodeSimpleExpression create_term_simple_expr(NodeTerm term, int lineno) {
   NodeSimpleExpression node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -316,10 +368,11 @@ NodeSimpleExpression create_ast_node_term_simple_expr(NodeTerm term) {
   }
   node->kind = kind_term_simple_expr;
   node->term = term;
+  node->lineno = lineno;
   return node;
 }
 
-NodeSimpleExpression create_ast_node_sign_simple_expr(SignOperator op, NodeTerm term) {
+NodeSimpleExpression create_sign_simple_expr(SignOperator op, NodeTerm term, int lineno) {
   NodeSimpleExpression node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -328,10 +381,11 @@ NodeSimpleExpression create_ast_node_sign_simple_expr(SignOperator op, NodeTerm 
   node->kind = kind_sign_simple_expr;
   node->sign_simple_expr.op = op;
   node->sign_simple_expr.term = term;
+  node->lineno = lineno;
   return node;
 }
 
-NodeSimpleExpression create_ast_node_additive_simple_expr(NodeSimpleExpression left, AdditiveOperator op, NodeTerm right) {
+NodeSimpleExpression create_additive_simple_expr(NodeSimpleExpression left, AdditiveOperator op, NodeTerm right, int lineno) {
   NodeSimpleExpression node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -341,10 +395,11 @@ NodeSimpleExpression create_ast_node_additive_simple_expr(NodeSimpleExpression l
   node->additive_expr.left = left;
   node->additive_expr.op = op;
   node->additive_expr.right = right;
+  node->lineno = lineno;
   return node;
 }
 
-NodeTerm create_ast_node_factor_term(NodeFactor factor) {
+NodeTerm create_factor_term(NodeFactor factor, int lineno) {
   NodeTerm node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -352,10 +407,11 @@ NodeTerm create_ast_node_factor_term(NodeFactor factor) {
   }
   node->kind = kind_factor_term;
   node->factor = factor;
+  node->lineno = lineno;
   return node;
 }
 
-NodeTerm create_ast_node_multiplicative_term(NodeTerm left, MultiplicativeOperator op, NodeFactor right) {
+NodeTerm create_multiplicative_term(NodeTerm left, MultiplicativeOperator op, NodeFactor right, int lineno) {
   NodeTerm node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -365,10 +421,11 @@ NodeTerm create_ast_node_multiplicative_term(NodeTerm left, MultiplicativeOperat
   node->multiplicative_expr.left = left;
   node->multiplicative_expr.op = op;
   node->multiplicative_expr.right = right;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFactor create_ast_node_var_access_factor(NodeVarAccess var_access) {
+NodeFactor create_var_access_factor(NodeVarAccess var_access, int lineno) {
   NodeFactor node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -376,10 +433,11 @@ NodeFactor create_ast_node_var_access_factor(NodeVarAccess var_access) {
   }
   node->kind = kind_var_access;
   node->var_access = var_access;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFactor create_ast_node_func_call_factor(NodeFuncCall func_call) {
+NodeFactor create_func_call_factor(NodeFuncCall func_call, int lineno) {
   NodeFactor node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -387,10 +445,11 @@ NodeFactor create_ast_node_func_call_factor(NodeFuncCall func_call) {
   }
   node->kind = kind_func_call;
   node->func_call = func_call;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFactor create_ast_node_parenthesized_expr_factor(NodeExpression expression) {
+NodeFactor create_parenthesized_expr_factor(NodeExpression expression, int lineno) {
   NodeFactor node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -398,10 +457,11 @@ NodeFactor create_ast_node_parenthesized_expr_factor(NodeExpression expression) 
   }
   node->kind = kind_parenthesized_expr;
   node->expression = expression;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFactor create_ast_node_literal_factor(NodeLiteral literal) {
+NodeFactor create_literal_factor(NodeLiteral literal, int lineno) {
   NodeFactor node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -409,10 +469,11 @@ NodeFactor create_ast_node_literal_factor(NodeLiteral literal) {
   }
   node->kind = kind_literal;
   node->literal = literal;
+  node->lineno = lineno;
   return node;
 }
 
-NodeFactor create_ast_node_not_factor(NodeFactor not_factor) {
+NodeFactor create_not_factor(NodeFactor not_factor, int lineno) {
   NodeFactor node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -420,10 +481,11 @@ NodeFactor create_ast_node_not_factor(NodeFactor not_factor) {
   }
   node->kind = kind_not_factor;
   node->not_factor = not_factor;
+  node->lineno = lineno;
   return node;
 }
 
-NodeLiteral create_ast_node_int_literal(int value) {
+NodeLiteral create_int_literal(int value, int lineno) {
   NodeLiteral node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -431,10 +493,11 @@ NodeLiteral create_ast_node_int_literal(int value) {
   }
   node->kind = kind_lit_integer;
   node->i_value = value;
+  node->lineno = lineno;
   return node;
 }
 
-NodeLiteral create_ast_node_float_literal(float value) {
+NodeLiteral create_float_literal(float value, int lineno) {
   NodeLiteral node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -442,10 +505,11 @@ NodeLiteral create_ast_node_float_literal(float value) {
   }
   node->kind = kind_lit_float;
   node->f_value = value;
+  node->lineno = lineno;
   return node;
 }
 
-NodeLiteral create_ast_node_char_literal(char value) {
+NodeLiteral create_char_literal(char value, int lineno) {
   NodeLiteral node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -453,10 +517,11 @@ NodeLiteral create_ast_node_char_literal(char value) {
   }
   node->kind = kind_lit_char;
   node->c_value = value;
+  node->lineno = lineno;
   return node;
 }
 
-NodeLiteral create_ast_node_string_literal(char *value) {
+NodeLiteral create_string_literal(char *value, int lineno) {
   NodeLiteral node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -468,10 +533,11 @@ NodeLiteral create_ast_node_string_literal(char *value) {
     fprintf(stderr, "Error: out of memory\n");
     exit(EXIT_FAILURE);
   }
+  node->lineno = lineno;
   return node;
 }
 
-NodeLiteral create_ast_node_bool_literal(int value) {
+NodeLiteral create_bool_literal(int value, int lineno) {
   NodeLiteral node = malloc(sizeof(*node));
   if (node == NULL) {
     fprintf(stderr, "Error: out of memory\n");
@@ -479,6 +545,7 @@ NodeLiteral create_ast_node_bool_literal(int value) {
   }
   node->kind = kind_lit_boolean;
   node->b_value = value;
+  node->lineno = lineno;
   return node;
 }
 
@@ -628,50 +695,57 @@ void print_multiplicative_op(MultiplicativeOperator op, int level) {
   }
 }
 
-void print_ast_node_program(NodeProgram node, int level) {
+void print_program(NodeProgram node, int level) {
   print_indent(level);
   fprintf(astout, "program\n");
-  print_ast_node_var_decl_list(node->var_decl_list, level + 1);
-  print_ast_node_func_decl_list(node->func_decl_list, level + 1);
-  print_ast_node_stmt_block(node->main_stmt_block, level + 1);
+  print_var_decl_list(node->var_decl_list, level + 1);
+  print_func_decl_list(node->func_decl_list, level + 1);
+  print_stmt_block(node->main_stmt_block, level + 1);
 }
 
-void print_ast_node_var_decl_list(NodeVarDeclList node, int level) {
+void print_var_decl_list(NodeVarDeclList node, int level) {
   if (node == NULL) {
     return;
   }
-  print_ast_node_var_decl(node->var_decl, level);
+  print_var_decl(node->var_decl, level);
   if (node->tail != NULL)
-    print_ast_node_var_decl_list(node->tail, level);
+    print_var_decl_list(node->tail, level);
 }
 
-void print_ast_node_var_decl(NodeVarDecl node, int level) {
+void print_var_decl(NodeVarDecl node, int level) {
   print_indent(level);
   fprintf(astout, "var_decl\n");
-  print_ast_node_var_id_list(node->var_id_list, level + 1);
-  print_ast_node_type_specifier(node->type_specifier, level + 1);
+  print_var_id_list(node->var_id_list, level + 1);
+  print_type_specifier(node->type_specifier, level + 1);
 }
 
-void print_ast_node_var_id_list(NodeVarIdList node, int level) {
+void print_var_id_list(NodeVarIdList node, int level) {
+  if (node == NULL) {
+    return;
+  }
+  print_var(node->var_id, level);
+  if (node->tail != NULL)
+    print_var_id_list(node->tail, level);
+}
+
+void print_var(NodeVarId node, int level) {
   if (node == NULL) {
     return;
   }
   print_indent(level);
   fprintf(astout, "id: %s\n", node->var_id);
-  if (node->tail != NULL)
-    print_ast_node_var_id_list(node->tail, level);
 }
 
-void print_ast_node_type_specifier(NodeTypeSpecifier node, int level) {
+void print_type_specifier(NodeType node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_primitive:
       fprintf(astout, "primitive_type_specifier\n");
-      print_ast_node_primitive_type_specifier(node, level + 1);
+      print_primitive_type_specifier(node, level + 1);
       break;
     case kind_array:
       fprintf(astout, "array_type_specifier\n");
-      print_ast_node_array_type_specifier(node, level + 1);
+      print_array_type_specifier(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_type_specifier\n");
@@ -679,102 +753,103 @@ void print_ast_node_type_specifier(NodeTypeSpecifier node, int level) {
   }
 }
 
-void print_ast_node_primitive_type_specifier(NodeTypeSpecifier node, int level) {
+void print_primitive_type_specifier(NodeType node, int level) {
   print_data_type(node->primitive_type, level);
 }
 
-void print_ast_node_array_type_specifier(NodeTypeSpecifier node, int level) {
+void print_array_type_specifier(NodeType node, int level) {
   print_data_type(node->array_type.data_type, level);
   print_int(node->array_type.size, level);
 }
 
-void print_ast_node_func_decl_list(NodeFuncDeclList node, int level) {
+void print_func_decl_list(NodeFuncDeclList node, int level) {
   if (node == NULL) {
     return;
   }
-  print_ast_node_func_decl(node->func_decl, level);
+  print_func_decl(node->func_decl, level);
   if (node->tail != NULL)
-    print_ast_node_func_decl_list(node->tail, level);
+    print_func_decl_list(node->tail, level);
 }
 
-void print_ast_node_func_decl(NodeFuncDecl node, int level) {
+void print_func_decl(NodeFuncDecl node, int level) {
   print_indent(level);
   fprintf(astout, "func_decl\n");
-  print_ast_node_func_header(node->func_header, level + 1);
-  print_ast_node_stmt_block(node->func_stmt_block, level + 1);
+  print_func_header(node->func_header, level + 1);
+  print_stmt_block(node->func_stmt_block, level + 1);
 }
 
-void print_ast_node_func_header(NodeFuncHeader node, int level) {
+void print_func_header(NodeFuncHeader node, int level) {
   print_indent(level);
   fprintf(astout, "func_header\n");
   print_indent(level + 1);
   fprintf(astout, "id: %s\n", node->func_identifier);
-  print_ast_node_func_param_list(node->func_param_list, level + 1);
-  print_ast_node_type_specifier(node->func_return_type, level + 1);
+  print_func_param_list(node->func_param_list, level + 1);
+  if (node->func_return_type != NULL)
+    print_type_specifier(node->func_return_type, level + 1);
 }
 
-void print_ast_node_func_param_list(NodeFuncParamList node, int level) {
+void print_func_param_list(NodeFuncParamList node, int level) {
   if (node == NULL) {
     return;
   }
-  print_ast_node_func_param(node->param, level);
+  print_func_param(node->param, level);
   if (node->tail != NULL)
-    print_ast_node_func_param_list(node->tail, level);
+    print_func_param_list(node->tail, level);
 }
 
-void print_ast_node_func_param(NodeFuncParam node, int level) {
+void print_func_param(NodeFuncParam node, int level) {
   print_indent(level);
   fprintf(astout, "func_param\n");
-  print_ast_node_var_id_list(node->param_id_list, level + 1);
-  print_ast_node_type_specifier(node->param_type, level + 1);
+  print_var_id_list(node->param_id_list, level + 1);
+  print_type_specifier(node->param_type, level + 1);
 }
 
-void print_ast_node_stmt_block(NodeStmtBlock node, int level) {
+void print_stmt_block(NodeStmtBlock node, int level) {
   print_indent(level);
   fprintf(astout, "stmt_block\n");
-  print_ast_node_var_decl_list(node->block_var_decl_list, level + 1);
-  print_ast_node_stmt_list(node->stmt_list, level + 1);
+  print_var_decl_list(node->block_var_decl_list, level + 1);
+  print_stmt_list(node->stmt_list, level + 1);
 }
 
-void print_ast_node_stmt_list(NodeStmtList node, int level) {
+void print_stmt_list(NodeStmtList node, int level) {
   if (node == NULL) {
     return;
   }
-  print_ast_node_stmt(node->stmt, level);
+  print_stmt(node->stmt, level);
   if (node->tail != NULL)
-    print_ast_node_stmt_list(node->tail, level);
+    print_stmt_list(node->tail, level);
 }
 
-void print_ast_node_stmt(NodeStmt node, int level) {
+void print_stmt(NodeStmt node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_attribution_stmt:
       fprintf(astout, "attribution_stmt\n");
-      print_ast_node_attribution_stmt(node, level + 1);
+      print_attribution_stmt(node, level + 1);
       break;
     case kind_func_call_stmt:
       fprintf(astout, "func_call_stmt\n");
-      print_ast_node_func_call_stmt(node, level + 1);
+      print_func_call_stmt(node, level + 1);
       break;
     case kind_comparison_ifx_stmt:
       fprintf(astout, "comparison_ifx_stmt\n");
-      print_ast_node_ifx_stmt(node, level + 1);
+      print_ifx_stmt(node, level + 1);
       break;
     case kind_comparison_ifelse_stmt:
       fprintf(astout, "comparison_ifelse_stmt\n");
-      print_ast_node_ifelse_stmt(node, level + 1);
+      print_ifelse_stmt(node, level + 1);
       break;
     case kind_iteration_stmt:
       fprintf(astout, "iteration_stmt\n");
-      print_ast_node_iteration_stmt(node, level + 1);
+      print_iteration_stmt(node, level + 1);
       break;
     case kind_ret_stmt:
       fprintf(astout, "ret_stmt\n");
-      print_ast_node_return_stmt(node, level + 1);
+      print_return_stmt(node, level + 1);
       break;
     case kind_block_stmt:
       fprintf(astout, "block_stmt\n");
-      print_ast_node_block_stmt(node, level + 1);
+      print_block_stmt(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_stmt\n");
@@ -782,49 +857,49 @@ void print_ast_node_stmt(NodeStmt node, int level) {
   }
 }
 
-void print_ast_node_attribution_stmt(NodeStmt node, int level) {
-  print_ast_node_var_access(node->attribution_stmt.var_access, level);
-  print_ast_node_expression(node->attribution_stmt.right, level);
+void print_attribution_stmt(NodeStmt node, int level) {
+  print_var_access(node->attribution_stmt.var_access, level);
+  print_expression(node->attribution_stmt.right, level);
 }
 
-void print_ast_node_func_call_stmt(NodeStmt node, int level) {
-  print_ast_node_func_call(node->func_call_stmt.call, level);
+void print_func_call_stmt(NodeStmt node, int level) {
+  print_func_call(node->func_call_stmt.call, level);
 }
 
-void print_ast_node_ifx_stmt(NodeStmt node, int level) {
-  print_ast_node_expression(node->comparison_ifx_stmt.cond, level);
-  print_ast_node_stmt(node->comparison_ifx_stmt.body, level);
+void print_ifx_stmt(NodeStmt node, int level) {
+  print_expression(node->comparison_ifx_stmt.cond, level);
+  print_stmt(node->comparison_ifx_stmt.body, level);
 }
 
-void print_ast_node_ifelse_stmt(NodeStmt node, int level) {
-  print_ast_node_expression(node->comparison_ifelse_stmt.cond, level);
-  print_ast_node_stmt(node->comparison_ifelse_stmt.if_body, level);
-  print_ast_node_stmt(node->comparison_ifelse_stmt.else_body, level);
+void print_ifelse_stmt(NodeStmt node, int level) {
+  print_expression(node->comparison_ifelse_stmt.cond, level);
+  print_stmt(node->comparison_ifelse_stmt.if_body, level);
+  print_stmt(node->comparison_ifelse_stmt.else_body, level);
 }
 
-void print_ast_node_iteration_stmt(NodeStmt node, int level) {
-  print_ast_node_expression(node->iteration_stmt.cond, level);
-  print_ast_node_stmt(node->iteration_stmt.body, level);
+void print_iteration_stmt(NodeStmt node, int level) {
+  print_expression(node->iteration_stmt.cond, level);
+  print_stmt(node->iteration_stmt.body, level);
 }
 
-void print_ast_node_return_stmt(NodeStmt node, int level) {
-  print_ast_node_expression(node->return_expr, level);
+void print_return_stmt(NodeStmt node, int level) {
+  print_expression(node->return_expr, level);
 }
 
-void print_ast_node_block_stmt(NodeStmt node, int level) {
-  print_ast_node_stmt_block(node->block, level);
+void print_block_stmt(NodeStmt node, int level) {
+  print_stmt_block(node->block, level);
 }
 
-void print_ast_node_var_access(NodeVarAccess node, int level) {
+void print_var_access(NodeVarAccess node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_simple_var_access:
       fprintf(astout, "simple_var_access\n");
-      print_ast_node_simple_var_access(node, level + 1);
+      print_simple_var_access(node, level + 1);
       break;
     case kind_array_access:
       fprintf(astout, "array_access\n");
-      print_ast_node_array_access(node, level + 1);
+      print_array_access(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_var_access\n");
@@ -832,42 +907,42 @@ void print_ast_node_var_access(NodeVarAccess node, int level) {
   }
 }
 
-void print_ast_node_simple_var_access(NodeVarAccess node, int level) {
+void print_simple_var_access(NodeVarAccess node, int level) {
   print_indent(level);
   fprintf(astout, "id: %s\n", node->var_id);
 }
 
-void print_ast_node_array_access(NodeVarAccess node, int level) {
-  print_ast_node_expression(node->array_access.idx, level);
+void print_array_access(NodeVarAccess node, int level) {
+  print_expression(node->array_access.idx, level);
 }
 
-void print_ast_node_func_call(NodeFuncCall node, int level) {
+void print_func_call(NodeFuncCall node, int level) {
   print_indent(level);
   fprintf(astout, "func_call\n");
   print_indent(level + 1);
   fprintf(astout, "id: %s\n", node->func_id);
-  print_ast_node_arg_list(node->arg_list, level + 1);
+  print_arg_list(node->arg_list, level + 1);
 }
 
-void print_ast_node_arg_list(NodeArgList node, int level) {
+void print_arg_list(NodeArgList node, int level) {
   if (node == NULL) {
     return;
   }
-  print_ast_node_expression(node->arg, level);
+  print_expression(node->arg, level);
   if (node->tail != NULL)
-    print_ast_node_arg_list(node->tail, level);
+    print_arg_list(node->tail, level);
 }
 
-void print_ast_node_expression(NodeExpression node, int level) {
+void print_expression(NodeExpression node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_simple_expr:
       fprintf(astout, "simple_expr\n");
-      print_ast_node_simple_expr_expression(node, level + 1);
+      print_simple_expr_expression(node, level + 1);
       break;
     case kind_relational_expr:
       fprintf(astout, "relational_expr\n");
-      print_ast_node_relational_expr_expression(node, level + 1);
+      print_relational_expr_expression(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_expr\n");
@@ -875,30 +950,30 @@ void print_ast_node_expression(NodeExpression node, int level) {
   }
 }
 
-void print_ast_node_simple_expr_expression(NodeExpression node, int level) {
-  print_ast_node_simple_expr(node->simple_expr, level);
+void print_simple_expr_expression(NodeExpression node, int level) {
+  print_simple_expr(node->simple_expr, level);
 }
 
-void print_ast_node_relational_expr_expression(NodeExpression node, int level) {
-  print_ast_node_simple_expr(node->relational_expr.left, level);
+void print_relational_expr_expression(NodeExpression node, int level) {
+  print_simple_expr(node->relational_expr.left, level);
   print_relation_op(node->relational_expr.op, level);
-  print_ast_node_simple_expr(node->relational_expr.right, level);
+  print_simple_expr(node->relational_expr.right, level);
 }
 
-void print_ast_node_simple_expr(NodeSimpleExpression node, int level) {
+void print_simple_expr(NodeSimpleExpression node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_term_simple_expr:
       fprintf(astout, "term_simple_expr\n");
-      print_ast_node_term_simple_expr(node, level + 1);
+      print_term_simple_expr(node, level + 1);
       break;
     case kind_sign_simple_expr:
       fprintf(astout, "sign_simple_expr\n");
-      print_ast_node_sign_simple_expr(node, level + 1);
+      print_sign_simple_expr(node, level + 1);
       break;
     case kind_additive_simple_expr:
       fprintf(astout, "additive_simple_expr\n");
-      print_ast_node_additive_simple_expr(node, level + 1);
+      print_additive_simple_expr(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_simple_expr\n");
@@ -906,31 +981,31 @@ void print_ast_node_simple_expr(NodeSimpleExpression node, int level) {
   }
 }
 
-void print_ast_node_term_simple_expr(NodeSimpleExpression node, int level) {
-  print_ast_node_term(node->term, level);
+void print_term_simple_expr(NodeSimpleExpression node, int level) {
+  print_term(node->term, level);
 }
 
-void print_ast_node_sign_simple_expr(NodeSimpleExpression node, int level) {
+void print_sign_simple_expr(NodeSimpleExpression node, int level) {
   print_sign_op(node->sign_simple_expr.op, level);
-  print_ast_node_term(node->sign_simple_expr.term, level);
+  print_term(node->sign_simple_expr.term, level);
 }
 
-void print_ast_node_additive_simple_expr(NodeSimpleExpression node, int level) {
-  print_ast_node_simple_expr(node->additive_expr.left, level);
+void print_additive_simple_expr(NodeSimpleExpression node, int level) {
+  print_simple_expr(node->additive_expr.left, level);
   print_additive_op(node->additive_expr.op, level);
-  print_ast_node_term(node->additive_expr.right, level);
+  print_term(node->additive_expr.right, level);
 }
 
-void print_ast_node_term(NodeTerm node, int level) {
+void print_term(NodeTerm node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_factor_term:
       fprintf(astout, "factor_term\n");
-      print_ast_node_factor_term(node, level + 1);
+      print_factor_term(node, level + 1);
       break;
     case kind_multiplicative_expr_term:
       fprintf(astout, "multiplicative_expr_term\n");
-      print_ast_node_multiplicative_term(node, level + 1);
+      print_multiplicative_term(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_term\n");
@@ -938,38 +1013,38 @@ void print_ast_node_term(NodeTerm node, int level) {
   }
 }
 
-void print_ast_node_factor_term(NodeTerm node, int level) {
-  print_ast_node_factor(node->factor, level);
+void print_factor_term(NodeTerm node, int level) {
+  print_factor(node->factor, level);
 }
 
-void print_ast_node_multiplicative_term(NodeTerm node, int level) {
-  print_ast_node_term(node->multiplicative_expr.left, level);
+void print_multiplicative_term(NodeTerm node, int level) {
+  print_term(node->multiplicative_expr.left, level);
   print_multiplicative_op(node->multiplicative_expr.op, level);
-  print_ast_node_factor(node->multiplicative_expr.right, level);
+  print_factor(node->multiplicative_expr.right, level);
 }
 
-void print_ast_node_factor(NodeFactor node, int level) {
+void print_factor(NodeFactor node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_var_access:
       fprintf(astout, "var_access_factor\n");
-      print_ast_node_var_access_factor(node, level + 1);
+      print_var_access_factor(node, level + 1);
       break;
     case kind_func_call:
       fprintf(astout, "func_call_factor\n");
-      print_ast_node_func_call_factor(node, level + 1);
+      print_func_call_factor(node, level + 1);
       break;
     case kind_parenthesized_expr:
       fprintf(astout, "parenthesized_expr_factor\n");
-      print_ast_node_parenthesized_expr_factor(node, level + 1);
+      print_parenthesized_expr_factor(node, level + 1);
       break;
     case kind_literal:
       fprintf(astout, "literal_factor\n");
-      print_ast_node_literal_factor(node, level + 1);
+      print_literal_factor(node, level + 1);
       break;
     case kind_not_factor:
       fprintf(astout, "not_factor\n");
-      print_ast_node_not_factor(node, level + 1);
+      print_not_factor(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_factor\n");
@@ -977,48 +1052,48 @@ void print_ast_node_factor(NodeFactor node, int level) {
   }
 }
 
-void print_ast_node_var_access_factor(NodeFactor node, int level) {
-  print_ast_node_var_access(node->var_access, level);
+void print_var_access_factor(NodeFactor node, int level) {
+  print_var_access(node->var_access, level);
 }
 
-void print_ast_node_func_call_factor(NodeFactor node, int level) {
-  print_ast_node_func_call(node->func_call, level);
+void print_func_call_factor(NodeFactor node, int level) {
+  print_func_call(node->func_call, level);
 }
 
-void print_ast_node_parenthesized_expr_factor(NodeFactor node, int level) {
-  print_ast_node_expression(node->expression, level);
+void print_parenthesized_expr_factor(NodeFactor node, int level) {
+  print_expression(node->expression, level);
 }
 
-void print_ast_node_literal_factor(NodeFactor node, int level) {
-  print_ast_node_literal(node->literal, level);
+void print_literal_factor(NodeFactor node, int level) {
+  print_literal(node->literal, level);
 }
 
-void print_ast_node_not_factor(NodeFactor node, int level) {
-  print_ast_node_factor(node->not_factor, level);
+void print_not_factor(NodeFactor node, int level) {
+  print_factor(node->not_factor, level);
 }
 
-void print_ast_node_literal(NodeLiteral node, int level) {
+void print_literal(NodeLiteral node, int level) {
   print_indent(level);
   switch (node->kind) {
     case kind_lit_integer:
       fprintf(astout, "int_literal\n");
-      print_ast_node_int_literal(node, level + 1);
+      print_int_literal(node, level + 1);
       break;
     case kind_lit_float:
       fprintf(astout, "float_literal\n");
-      print_ast_node_float_literal(node, level + 1);
+      print_float_literal(node, level + 1);
       break;
     case kind_lit_char:
       fprintf(astout, "char_literal\n");
-      print_ast_node_char_literal(node, level + 1);
+      print_char_literal(node, level + 1);
       break;
     case kind_lit_string:
       fprintf(astout, "string_literal\n");
-      print_ast_node_string_literal(node, level + 1);
+      print_string_literal(node, level + 1);
       break;
     case kind_lit_boolean:
       fprintf(astout, "bool_literal\n");
-      print_ast_node_bool_literal(node, level + 1);
+      print_bool_literal(node, level + 1);
       break;
     default:
       fprintf(astout, "unknown_literal\n");
@@ -1026,22 +1101,22 @@ void print_ast_node_literal(NodeLiteral node, int level) {
   }
 }
 
-void print_ast_node_int_literal(NodeLiteral node, int level) {
+void print_int_literal(NodeLiteral node, int level) {
   print_int(node->i_value, level);
 }
 
-void print_ast_node_float_literal(NodeLiteral node, int level) {
+void print_float_literal(NodeLiteral node, int level) {
   print_float(node->f_value, level);
 }
 
-void print_ast_node_char_literal(NodeLiteral node, int level) {
+void print_char_literal(NodeLiteral node, int level) {
   print_char(node->c_value, level);
 }
 
-void print_ast_node_string_literal(NodeLiteral node, int level) {
+void print_string_literal(NodeLiteral node, int level) {
   print_string(node->s_value, level);
 }
 
-void print_ast_node_bool_literal(NodeLiteral node, int level) {
+void print_bool_literal(NodeLiteral node, int level) {
   print_bool(node->b_value, level);
 }

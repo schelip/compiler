@@ -2,7 +2,7 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <string.h>
-  #include "ast.h"
+  #include "syntax.h"
   #include "parser.tab.h"
   void yyerror(char *);
   char *copytext(char *text);
@@ -129,6 +129,10 @@ symbols         [-+*/%=!<>\(\)\[\]\{\},:;]
 "string"        {
                   fprintf(yyout, "STRING");
                   return STRING;
+                }
+"bool"          {
+                  fprintf(yyout, "BOOL");
+                  return BOOL;
                 }
 {id}            {
                   fprintf(yyout, "ID");

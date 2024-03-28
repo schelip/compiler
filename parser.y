@@ -2,7 +2,7 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <string.h>
-  #include "ast.h"
+  #include "syntax.h"
 
   int yylex(void);
   void yyerror(const char *);
@@ -14,7 +14,7 @@
   extern int yywrap();
 
   extern FILE *astout;
-  NodeProgram program_node;
+  NodeProgram program;
 %}
 
 %union {
@@ -32,7 +32,8 @@
   NodeVarDeclList node_var_decl_list;
   NodeVarDecl node_var_decl;
   NodeVarIdList node_var_id_list;
-  NodeTypeSpecifier node_type_specifier;
+  NodeVarId node_var_id;
+  NodeType node_type;
   NodeFuncDeclList node_func_decl_list;
   NodeFuncDecl node_func_decl;
   NodeFuncHeader node_func_header;
@@ -69,11 +70,11 @@
 %type <node_program> program
 %type <node_var_decl_list> variable_declaration_list
 %type <node_var_decl> variable_declaration
-%type <s_value> variable_identifier
 %type <node_var_id_list> variable_identifier_list
-%type <node_type_specifier> type_specifier
-%type <node_type_specifier> primitive_type_specifier
-%type <node_type_specifier> array_type_specifier
+%type <node_var_id> variable_identifier
+%type <node_type> type_specifier
+%type <node_type> primitive_type_specifier
+%type <node_type> array_type_specifier
 %type <enum_data_type> data_type
 %type <node_func_decl_list> function_declaration_list
 %type <node_func_decl> function_declaration
@@ -111,29 +112,29 @@
 
 program : variable_declaration_list function_declaration_list statement_block
         {
-          $$ = create_ast_node_program($1, $2, $3);
-          program_node = $$;
+          $$ = create_program($1, $2, $3, yylineno);
+          program = $$;
         } ;
 
 variable_declaration_list : /* epsilon  */ { $$ = NULL; }
-                          | variable_declaration variable_declaration_list { $$ = create_ast_node_var_decl_list($1, $2); }
+                          | variable_declaration variable_declaration_list { $$ = create_var_decl_list($1, $2, yylineno); }
                           ;
                     
-variable_declaration : VAR variable_identifier_list ':' type_specifier ';' { $$ = create_ast_node_var_decl($2, $4); } ;
+variable_declaration : VAR variable_identifier_list ':' type_specifier ';' { $$ = create_var_decl($2, $4, yylineno); } ;
 
-variable_identifier_list : variable_identifier { $$ = create_ast_node_var_id_list($1, NULL); }
-                         | variable_identifier ',' variable_identifier_list { $$ = create_ast_node_var_id_list($1, $3); }
+variable_identifier_list : variable_identifier { $$ = create_var_id_list($1, NULL, yylineno); }
+                         | variable_identifier ',' variable_identifier_list { $$ = create_var_id_list($1, $3, yylineno); }
                          ;
 
-variable_identifier : ID ;
+variable_identifier : ID { $$ = create_var_id($1, yylineno); } ;
 
 type_specifier : primitive_type_specifier
                | array_type_specifier
                ;
 
-primitive_type_specifier : data_type { $$ = create_ast_node_primitive_type_specifier($1); } ;
+primitive_type_specifier : data_type { $$ = create_primitive_type_specifier($1, yylineno); } ;
                         
-array_type_specifier : ARRAY '[' LITERAL_INT ']' OF data_type { $$ = create_ast_node_array_type_specifier($6, $3); } ;
+array_type_specifier : ARRAY '[' LITERAL_INT ']' OF data_type { $$ = create_array_type_specifier($6, $3, yylineno); } ;
 
 data_type : INT { $$ = type_int; }
           | FLOAT { $$ = type_float; }
@@ -143,13 +144,13 @@ data_type : INT { $$ = type_int; }
           ;
 
 function_declaration_list : /* epsilon */ { $$ = NULL; }
-                          | function_declaration function_declaration_list { $$ = create_ast_node_func_decl_list($1, $2); }
+                          | function_declaration function_declaration_list { $$ = create_func_decl_list($1, $2, yylineno); }
                           ;
 
-function_declaration : function_header statement_block { $$ = create_ast_node_func_decl($1, $2); } ;
+function_declaration : function_header statement_block { $$ = create_func_decl($1, $2, yylineno); } ;
 
-function_header : FUNCTION function_identifier function_parameters { $$ = create_ast_node_func_header($2, $3, NULL); }
-                | FUNCTION function_identifier function_parameters ':' type_specifier { $$ = create_ast_node_func_header($2, $3, $5); }
+function_header : FUNCTION function_identifier function_parameters { $$ = create_func_header($2, $3, NULL, yylineno); }
+                | FUNCTION function_identifier function_parameters ':' type_specifier { $$ = create_func_header($2, $3, $5, yylineno); }
                 ;
 
 function_identifier : ID ;
@@ -157,16 +158,16 @@ function_identifier : ID ;
 function_parameters : '(' ')' { $$ = NULL; }
                     | '(' parameter_list ')' { $$ = $2; } ;
 
-parameter_list : parameter { $$ = create_ast_node_func_param_list($1, NULL); }
-               | parameter ';' parameter_list { $$ = create_ast_node_func_param_list($1, $3); }
+parameter_list : parameter { $$ = create_func_param_list($1, NULL, yylineno); }
+               | parameter ';' parameter_list { $$ = create_func_param_list($1, $3, yylineno); }
                ;
 
-parameter : variable_identifier_list ':' type_specifier { $$ = create_ast_node_func_param($1, $3); } ;
+parameter : variable_identifier_list ':' type_specifier { $$ = create_func_param($1, $3, yylineno); } ;
 
-statement_block : '{' variable_declaration_list statement_list '}' { $$ = create_ast_node_stmt_block($2, $3); } ;
+statement_block : '{' variable_declaration_list statement_list '}' { $$ = create_stmt_block($2, $3, yylineno); } ;
 
 statement_list : /* epsilon */ { $$ = NULL; }
-               | statement statement_list { $$ = create_ast_node_stmt_list($1, $2); }
+               | statement statement_list { $$ = create_stmt_list($1, $2, yylineno); }
                ;
 
 statement : attribution_statement
@@ -174,59 +175,59 @@ statement : attribution_statement
           | comparison_structure
           | iteration_structure
           | return_statement
-          | statement_block { $$ = create_ast_node_block_stmt($1); }
+          | statement_block { $$ = create_block_stmt($1, yylineno); }
           ;
 
-attribution_statement : variable_access '=' expression ';' { $$ = create_ast_node_attribution_stmt($1, $3); } ;
+attribution_statement : variable_access '=' expression ';' { $$ = create_attribution_stmt($1, $3, yylineno); } ;
 
 variable_access : simple_variable_access
                 | array_access
                 ;
 
-simple_variable_access : ID { $$ = create_ast_node_simple_var_access($1); } ;
+simple_variable_access : ID { $$ = create_simple_var_access($1, yylineno); } ;
 
-array_access : ID '[' expression ']' { $$ = create_ast_node_array_access($1, $3); } ;
+array_access : ID '[' expression ']' { $$ = create_array_access($1, $3, yylineno); } ;
 
-function_call_statement : function_call ';' { $$ = create_ast_node_func_call_stmt($1); } ;
+function_call_statement : function_call ';' { $$ = create_func_call_stmt($1, yylineno); } ;
 
-function_call : ID '(' ')' { $$ = create_ast_node_func_call($1, NULL); }
-              | ID '(' argument_list ')' { $$ = create_ast_node_func_call($1, $3); };
+function_call : ID '(' ')' { $$ = create_func_call($1, NULL, yylineno); }
+              | ID '(' argument_list ')' { $$ = create_func_call($1, $3, yylineno); };
               ;
 
-argument_list : expression { $$ = create_ast_node_arg_list($1, NULL); }
-              | expression ',' argument_list { $$ = create_ast_node_arg_list($1, $3); }
+argument_list : expression { $$ = create_arg_list($1, NULL, yylineno); }
+              | expression ',' argument_list { $$ = create_arg_list($1, $3, yylineno); }
               ;
 
 comparison_structure : ifx_statement
                      | ifelse_statement
                      ;
 
-ifx_statement : IF '(' expression ')' statement %prec IFX { $$ = create_ast_node_ifx_stmt($3, $5); };
+ifx_statement : IF '(' expression ')' statement %prec IFX { $$ = create_ifx_stmt($3, $5, yylineno); };
 
-ifelse_statement : IF '(' expression ')' statement ELSE statement { $$ = create_ast_node_ifelse_stmt($3, $5, $7); } ;
+ifelse_statement : IF '(' expression ')' statement ELSE statement { $$ = create_ifelse_stmt($3, $5, $7, yylineno); } ;
 
-iteration_structure : WHILE '(' expression ')' statement { $$ = create_ast_node_iteration_stmt($3, $5); } ;
+iteration_structure : WHILE '(' expression ')' statement { $$ = create_iteration_stmt($3, $5, yylineno); } ;
 
-return_statement : RETURN expression ';' { $$ = create_ast_node_return_stmt($2); } ;
+return_statement : RETURN expression ';' { $$ = create_return_stmt($2, yylineno); } ;
 
-expression : simple_expression { $$ = create_ast_node_simple_expr_expression($1); }
-           | simple_expression relational_operator simple_expression { $$ = create_ast_node_relational_expr_expression($1, $2, $3); }
+expression : simple_expression { $$ = create_simple_expr_expression($1, yylineno); }
+           | simple_expression relational_operator simple_expression { $$ = create_relational_expr_expression($1, $2, $3, yylineno); }
            ;
 
-simple_expression : term { $$ = create_ast_node_term_simple_expr($1); }
-                  | sign term { $$ = create_ast_node_sign_simple_expr($1, $2); }
-                  | simple_expression additive_operator term { $$ = create_ast_node_additive_simple_expr($1, $2, $3); }
+simple_expression : term { $$ = create_term_simple_expr($1, yylineno); }
+                  | sign term { $$ = create_sign_simple_expr($1, $2, yylineno); }
+                  | simple_expression additive_operator term { $$ = create_additive_simple_expr($1, $2, $3, yylineno); }
                   ;
 
-term : factor { $$ = create_ast_node_factor_term($1); }
-     | term multiplicative_operator factor { $$ = create_ast_node_multiplicative_term($1, $2, $3); }
+term : factor { $$ = create_factor_term($1, yylineno); }
+     | term multiplicative_operator factor { $$ = create_multiplicative_term($1, $2, $3, yylineno); }
      ;
 
-factor : variable_access { $$ = create_ast_node_var_access_factor($1); }
-       | function_call { $$ = create_ast_node_func_call_factor($1); }
-       | '(' expression ')' { $$ = create_ast_node_parenthesized_expr_factor($2); }
-       | literal { $$ = create_ast_node_literal_factor($1); }
-       | NOT factor { $$ = create_ast_node_not_factor($2); }
+factor : variable_access { $$ = create_var_access_factor($1, yylineno); }
+       | function_call { $$ = create_func_call_factor($1, yylineno); }
+       | '(' expression ')' { $$ = create_parenthesized_expr_factor($2, yylineno); }
+       | literal { $$ = create_literal_factor($1, yylineno); }
+       | NOT factor { $$ = create_not_factor($2, yylineno); }
        ;
 
 sign : '+' %prec UPLUS { $$ = op_uplus; }
@@ -252,11 +253,11 @@ multiplicative_operator : '*' { $$ = op_mul; }
                         | AND { $$ = op_and; }
                         ;
 
-literal : LITERAL_INT { $$ = create_ast_node_int_literal($1); }
-        | LITERAL_FLOAT { $$ = create_ast_node_float_literal($1); }
-        | LITERAL_CHAR { $$ = create_ast_node_char_literal($1); }
-        | LITERAL_STRING { $$ = create_ast_node_string_literal($1); }
-        | LITERAL_BOOL { $$ = create_ast_node_bool_literal($1); }
+literal : LITERAL_INT { $$ = create_int_literal($1, yylineno); }
+        | LITERAL_FLOAT { $$ = create_float_literal($1, yylineno); }
+        | LITERAL_CHAR { $$ = create_char_literal($1, yylineno); }
+        | LITERAL_STRING { $$ = create_string_literal($1, yylineno); }
+        | LITERAL_BOOL { $$ = create_bool_literal($1, yylineno); }
         ;
 
 %%
@@ -267,12 +268,12 @@ void yyerror(const char *s)
   fprintf(stderr, "Error:  %s at line %d\n", s, yylineno);
 }
 
-int main(int argc, char* argv[])
+/* int main(int argc, char* argv[])
 {
   yyout=fopen("test.src.out","w");
-  astout=fopen("ast.out", "w");
+  astout=fopen("syntax.out", "w");
   yyparse();
   fflush(yyout);
-  print_ast_node_program(program_node, 0);
+  print_program(program_node, 0);
   return EXIT_SUCCESS;
-}
+} */
